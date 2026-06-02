@@ -328,8 +328,15 @@ export const userApi = {
 export const dashboardApi = {
   getStats: (): Promise<DashboardStats> =>
     axiosInstance.get('/dashboard/stats').then((res) => {
-      const d = res.data
-      // handle both { data: { ... } } and { totalVehicles, ... } shapes
-      return (d?.data ?? d) as DashboardStats
+      // Response shape: { data: { totals, vehicles, rentals, recentRentals } }
+      const d = res.data?.data
+      return {
+        totalUsers:        d?.totals?.users        ?? 0,
+        totalVehicles:     d?.totals?.vehicles      ?? 0,
+        availableVehicles: d?.vehicles?.available   ?? 0,
+        totalRentals:      d?.totals?.rentals        ?? 0,
+        pendingRentals:    d?.rentals?.pending       ?? 0,
+        totalRevenue:      d?.totals?.revenue        ?? 0,
+      } as DashboardStats
     }),
 }
