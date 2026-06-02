@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, RefreshCw, AlertTriangle, Loader2, Images, X, Upload, ImagePlus, Star, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCw, AlertTriangle, Loader2, Images, X, ImagePlus, Star, ToggleLeft, ToggleRight, Search } from 'lucide-react'
 import { vehicleApi } from '@/lib/api'
 import { getErrorMessage } from '@/lib/axios'
 import { formatRupiah } from '@/lib/format'
@@ -34,6 +34,7 @@ export default function AdminVehiclesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null)
   const [deleting, setDeleting]         = useState(false)
   const [togglingId, setTogglingId]     = useState<string | null>(null)
+  const [search, setSearch]             = useState('')
 
   const [galleryTarget, setGalleryTarget]   = useState<Vehicle | null>(null)
   const [galleryImages, setGalleryImages]   = useState<VehicleImage[]>([])
@@ -56,6 +57,18 @@ export default function AdminVehiclesPage() {
 
   useEffect(() => { fetchVehicles() }, [])
 
+  // Filter client-side
+  const filtered = vehicles.filter((v) => {
+    const q = search.toLowerCase()
+    return (
+      v.name.toLowerCase().includes(q) ||
+      v.brand.toLowerCase().includes(q) ||
+      v.plateNumber.toLowerCase().includes(q) ||
+      v.location?.toLowerCase().includes(q) ||
+      typeLabel[v.type]?.toLowerCase().includes(q)
+    )
+  })
+
   // Toggle AVAILABLE ↔ MAINTENANCE
   const handleToggleStatus = async (v: Vehicle) => {
     if (v.status === 'RENTED') {
@@ -69,7 +82,7 @@ export default function AdminVehiclesPage() {
       setVehicles((prev) => prev.map((item) =>
         item.id === v.id ? { ...item, status: newStatus } : item
       ))
-      toast.success(`Status ${v.name} diubah ke ${newStatus === 'AVAILABLE' ? 'Tersedia' : 'Tidak Tersedia'}`)
+      toast.success(`${v.name} → ${newStatus === 'AVAILABLE' ? 'Tersedia' : 'Tidak Tersedia'}`)
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
@@ -189,8 +202,35 @@ export default function AdminVehiclesPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      {!loading && vehicles.length > 0 && (
+        <div className="relative mb-5">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Cari nama, merek, plat, atau lokasi..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 bg-white text-slate-800 placeholder:text-slate-400 transition-all"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {search && (
+        <p className="text-sm text-slate-500 mb-4">
+          Menampilkan <span className="font-semibold text-slate-700">{filtered.length}</span> hasil untuk "<span className="text-primary-600">{search}</span>"
+        </p>
+      )}
+
       {loading ? <Loader /> : vehicles.length === 0 ? (
         <EmptyState title="Belum ada kendaraan" description="Tambahkan kendaraan pertama." />
+      ) : filtered.length === 0 ? (
+        <EmptyState title="Kendaraan tidak ditemukan" description={`Tidak ada kendaraan dengan kata kunci "${search}".`} />
       ) : (
         <>
           {/* Tabel Desktop */}
@@ -208,7 +248,7 @@ export default function AdminVehiclesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {vehicles.map((v) => (
+                {filtered.map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -228,7 +268,6 @@ export default function AdminVehiclesPage() {
                       <span className={statusBadge[v.status] ?? 'badge-gray'}>{statusLabel[v.status] ?? v.status}</span>
                     </td>
                     <td className="px-5 py-4">
-                      {/* Toggle ON/OFF */}
                       {v.status !== 'RENTED' ? (
                         <button
                           onClick={() => handleToggleStatus(v)}
@@ -238,15 +277,13 @@ export default function AdminVehiclesPage() {
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
                               : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                           }`}
-                          title={v.status === 'AVAILABLE' ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'}
                         >
-                          {togglingId === v.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : v.status === 'AVAILABLE' ? (
-                            <><ToggleRight size={15} /> Aktif</>
-                          ) : (
-                            <><ToggleLeft size={15} /> Nonaktif</>
-                          )}
+                          {togglingId === v.id
+                            ? <Loader2 size={13} className="animate-spin" />
+                            : v.status === 'AVAILABLE'
+                            ? <><ToggleRight size={15} /> Aktif</>
+                            : <><ToggleLeft size={15} /> Nonaktif</>
+                          }
                         </button>
                       ) : (
                         <span className="text-xs text-slate-400">Sedang disewa</span>
@@ -267,7 +304,7 @@ export default function AdminVehiclesPage() {
 
           {/* Kartu Mobile */}
           <div className="md:hidden space-y-3">
-            {vehicles.map((v) => (
+            {filtered.map((v) => (
               <div key={v.id} className="card flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
                   <img src={v.imageUrl || `https://placehold.co/80x80/e2e8f0/94a3b8?text=${encodeURIComponent(v.name)}`} alt={v.name} className="w-full h-full object-cover" />
@@ -279,7 +316,6 @@ export default function AdminVehiclesPage() {
                     <span className={statusBadge[v.status] ?? 'badge-gray'}>{statusLabel[v.status]}</span>
                     <span className="text-xs font-semibold text-primary-600">{formatRupiah(v.pricePerDay)}</span>
                   </div>
-                  {/* Toggle mobile */}
                   {v.status !== 'RENTED' && (
                     <button
                       onClick={() => handleToggleStatus(v)}
@@ -338,9 +374,7 @@ export default function AdminVehiclesPage() {
       {galleryTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setGalleryTarget(null); setPreviewImg(null) }} />
-          <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl z-10"
-            style={{ background: 'linear-gradient(135deg, #0f1f2e 0%, #0a1628 100%)' }}
-          >
+          <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl z-10" style={{ background: 'linear-gradient(135deg, #0f1f2e 0%, #0a1628 100%)' }}>
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
@@ -369,17 +403,10 @@ export default function AdminVehiclesPage() {
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               <label className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-2xl py-6 cursor-pointer transition-all ${uploadingImg ? 'border-white/10 opacity-50 pointer-events-none' : 'border-white/15 hover:border-emerald-500/50 hover:bg-emerald-500/5'}`}>
-                {uploadingImg ? (
-                  <><Loader2 size={24} className="animate-spin text-emerald-400" /><span className="text-sm text-white/50">Mengupload foto...</span></>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                      <ImagePlus size={22} className="text-emerald-400" />
-                    </div>
-                    <p className="text-sm font-semibold text-white/70">Klik untuk upload foto</p>
-                    <p className="text-xs text-white/30">JPG · PNG · WEBP — maks. 5MB</p>
-                  </>
-                )}
+                {uploadingImg
+                  ? <><Loader2 size={24} className="animate-spin text-emerald-400" /><span className="text-sm text-white/50">Mengupload foto...</span></>
+                  : <><div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center"><ImagePlus size={22} className="text-emerald-400" /></div><p className="text-sm font-semibold text-white/70">Klik untuk upload foto</p><p className="text-xs text-white/30">JPG · PNG · WEBP — maks. 5MB</p></>
+                }
                 <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGalleryUpload} disabled={uploadingImg} />
               </label>
 
@@ -390,9 +417,7 @@ export default function AdminVehiclesPage() {
                 </div>
               ) : galleryImages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                    <Images size={28} className="text-white/20" />
-                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center"><Images size={28} className="text-white/20" /></div>
                   <p className="text-sm text-white/30">Belum ada foto di galeri</p>
                 </div>
               ) : (
@@ -405,11 +430,7 @@ export default function AdminVehiclesPage() {
                           {deletingImgId === img.id ? <><Loader2 size={13} className="animate-spin" /> Menghapus...</> : <><Trash2 size={13} /> Hapus</>}
                         </button>
                       </div>
-                      {img.order === 0 && (
-                        <div className="absolute top-2 left-2">
-                          <span className="flex items-center gap-1 text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full font-semibold"><Star size={10} fill="white" /> Utama</span>
-                        </div>
-                      )}
+                      {img.order === 0 && <div className="absolute top-2 left-2"><span className="flex items-center gap-1 text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full font-semibold"><Star size={10} fill="white" /> Utama</span></div>}
                       <div className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center font-bold">{img.order + 1}</div>
                     </div>
                   ))}

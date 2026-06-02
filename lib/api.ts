@@ -44,7 +44,7 @@ export interface VehicleParams {
   page?: number
   limit?: number
   location?: string
-  category?: string   // ← baru
+  category?: string
 }
 
 export interface VehicleListResponse {
@@ -55,7 +55,7 @@ export interface VehicleListResponse {
 export interface CreateVehicleDto {
   name: string
   type: VehicleType
-  category?: string   // ← baru
+  category?: string
   brand: string
   model: string
   year: number
@@ -327,5 +327,9 @@ export const userApi = {
 
 export const dashboardApi = {
   getStats: (): Promise<DashboardStats> =>
-    axiosInstance.get('/dashboard/stats').then(unwrap<DashboardStats>),
+    axiosInstance.get('/dashboard/stats').then((res) => {
+      const d = res.data
+      // handle both { data: { ... } } and { totalVehicles, ... } shapes
+      return (d?.data ?? d) as DashboardStats
+    }),
 }
