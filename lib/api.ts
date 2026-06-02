@@ -73,6 +73,7 @@ export interface CreateRentalDto {
   vehicleId: string
   startDate: string
   endDate: string
+  note?: string
 }
 
 export interface RentalParams {

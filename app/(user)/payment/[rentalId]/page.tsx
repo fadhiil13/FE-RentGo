@@ -89,9 +89,11 @@ export default function PaymentPage() {
   const [proofPreview, setProofPreview]     = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Countdown dari createdAt payment
+  // Countdown aktif jika status PENDING dan BELUM upload bukti pembayaran (bukan PENDING_REVIEW)
   const { display, expired, percent } = useCountdown(
-    payment?.status === 'PENDING' ? payment?.createdAt : undefined
+    payment?.status === 'PENDING' && payment?.proofStatus !== 'PENDING_REVIEW' 
+      ? payment?.createdAt 
+      : undefined
   )
 
   useEffect(() => {
@@ -207,8 +209,8 @@ export default function PaymentPage() {
 
         <h1 className="text-2xl font-bold text-white mb-6">Pembayaran</h1>
 
-        {/* ── Countdown Timer ── */}
-        {payment && payment.status === 'PENDING' && (
+        {/* ── Countdown Timer (Akan tersembunyi jika status bukti 'PENDING_REVIEW') ── */}
+        {payment && payment.status === 'PENDING' && payment.proofStatus !== 'PENDING_REVIEW' && (
           <div className={`rounded-2xl p-5 mb-5 border ${
             expired
               ? 'bg-red-500/10 border-red-500/25'
